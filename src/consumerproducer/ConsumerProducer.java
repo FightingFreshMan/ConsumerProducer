@@ -6,6 +6,7 @@
 package consumerproducer;
 
 import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
@@ -24,19 +25,20 @@ public class ConsumerProducer {
      * @param args the command line arguments
      */
     private static Buffer buffer = new Buffer();
-
+    private static  ArrayBlockingQueue<Integer> bbuffer=new ArrayBlockingQueue<>(2);
     public static void main(String[] args) {
         // TODO code application logic here
         ExecutorService exe = Executors.newFixedThreadPool(2);
-        exe.execute(new ProducerTask());
         exe.execute(new ConsumerTask());
+        exe.execute(new ProducerTask());
+        
         exe.shutdown();
     }
 
     private static class Buffer {
 
         private static final int CAPACITY = 1;
-        private static LinkedList<Integer> queue = new LinkedList<Integer>();
+        private static  LinkedList<Integer> queue = new LinkedList<Integer>();
         private static Lock lock = new ReentrantLock();
         private static Condition notEmpty = lock.newCondition();
         private static Condition notFull = lock.newCondition();
@@ -58,6 +60,7 @@ public class ConsumerProducer {
         }
 
         public int read() {
+            lock.lock();
             int value = 0;
             try {
                 while (queue.isEmpty()) {
@@ -70,11 +73,9 @@ public class ConsumerProducer {
                 ex.printStackTrace();
             } finally {
                 lock.unlock();
-                 return value;
             }
-
+            return value;
         }
-
     }
 
     private static class ProducerTask implements Runnable {
@@ -83,9 +84,10 @@ public class ConsumerProducer {
             try {
                 int i = 1;
                 while (true) {
-                    System.out.println("Producer write to Buffer" + i);
-                    buffer.write(i++);
-                    Thread.sleep(10000);
+                   System.out.println("Producer write to Buffer: " + i);
+                   buffer.write(i++);
+                   // bbuffer.put(i++);//ues blockingqueue
+                    Thread.sleep(1000);
                 }
             } catch (InterruptedException ex) {
                 Logger.getLogger(ConsumerProducer.class.getName()).log(Level.SEVERE, null, ex);
@@ -98,8 +100,9 @@ public class ConsumerProducer {
         public void run() {
             try {
                 while (true) {
-                    System.out.println("\t\t\tConsumer reads " + buffer.read());
-                    Thread.sleep(10000);
+                   System.out.println("\t\t\tConsumer reads:  " + buffer.read());
+                   // System.out.println("\t\t\tConsumer reads " + bbuffer.take());//ues blockingqueue
+                    Thread.sleep(1000);
                 }
             } catch (InterruptedException ex) {
                 Logger.getLogger(ConsumerProducer.class.getName()).log(Level.SEVERE, null, ex);
